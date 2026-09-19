@@ -1,69 +1,131 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth, db } from "../lib/firebase";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+import styles from "./home.module.css";
 
 export default function Home() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState("");
+  const router = useRouter();
+
+  // Check if user is logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        router.push("/login");
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  // Fetch tasks for this user in real-time
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const taskList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setTasks(taskList);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    if (!newTask.trim()) return;
+    await addDoc(collection(db, "tasks"), {
+      title: newTask,
+      isComplete: false,
+      userId: user.uid,
+      createdAt: new Date(),
+    });
+    setNewTask("");
+  };
+
+  const toggleComplete = async (task) => {
+    await updateDoc(doc(db, "tasks", task.id), {
+      isComplete: !task.isComplete,
+    });
+  };
+
+  const handleDelete = async (id) => {
+    await deleteDoc(doc(db, "tasks", id));
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/login");
+  };
+
+  if (loading) return <p>Loading...</p>;
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.js</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className={styles.container}>
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>My Tasks</h1>
+          <button onClick={handleLogout} className={styles.logoutBtn}>
+            Logout
+          </button>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        <form onSubmit={handleAddTask} className={styles.form}>
+          <input
+            type="text"
+            placeholder="Add a new task..."
+            value={newTask}
+            onChange={(e) => setNewTask(e.target.value)}
+            className={styles.input}
+          />
+          <button type="submit" className={styles.addBtn}>
+            Add
+          </button>
+        </form>
+
+        <ul className={styles.taskList}>
+          {tasks.map((task) => (
+            <li key={task.id} className={styles.taskItem}>
+              <span
+                onClick={() => toggleComplete(task)}
+                className={
+                  task.isComplete ? styles.taskDone : styles.taskText
+                }
+              >
+                {task.title}
+              </span>
+              <button
+                onClick={() => handleDelete(task.id)}
+                className={styles.deleteBtn}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        {tasks.length === 0 && (
+          <p className={styles.emptyText}>No tasks yet. Add one above!</p>
+        )}
+      </div>
     </div>
   );
 }
