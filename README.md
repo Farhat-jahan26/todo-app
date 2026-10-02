@@ -1,16 +1,21 @@
 # Todo App with Authentication
 
-A full-stack todo application with user authentication, allowing users to sign up, log in, and manage their personal task list in real-time.
+A full-stack task management application with user authentication, due dates, priority levels, and real-time sync — allowing users to sign up, log in, and manage their personal task list efficiently.
 
 ## Features
 - User authentication (Sign up / Login) using Firebase Auth
 - Add, complete, and delete tasks
+- **Due dates** with automatic overdue highlighting
+- **Priority levels** (High / Medium / Low) with color-coded badges
+- **Filter tasks** by status — All / Pending / Completed
+- **Task summary** — tracks completed vs total tasks
 - Real-time sync — tasks update instantly across sessions
 - Each user sees only their own tasks (secured by user ID)
 
 ## Tech Stack
 - **Frontend:** Next.js, React
 - **Backend/Database:** Firebase Authentication, Firestore
+- **Styling:** CSS Modules
 - **Deployment:** Vercel
 
 ## Getting Started
@@ -36,5 +41,5 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 npm run dev
 
-   ## Live Demo
-   https://todo-app-delta-five-62.vercel.app/
+## Live Demo
+https://todo-app-delta-five-62.vercel.app/
