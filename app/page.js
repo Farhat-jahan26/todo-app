@@ -20,9 +20,11 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [priority, setPriority] = useState("Medium");
+  const [filter, setFilter] = useState("all"); // all | pending | completed
   const router = useRouter();
 
-  // Check if user is logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
@@ -35,7 +37,6 @@ export default function Home() {
     return () => unsubscribe();
   }, [router]);
 
-  // Fetch tasks for this user in real-time
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
@@ -55,10 +56,14 @@ export default function Home() {
     await addDoc(collection(db, "tasks"), {
       title: newTask,
       isComplete: false,
+      dueDate: dueDate || null,
+      priority: priority,
       userId: user.uid,
       createdAt: new Date(),
     });
     setNewTask("");
+    setDueDate("");
+    setPriority("Medium");
   };
 
   const toggleComplete = async (task) => {
@@ -75,6 +80,26 @@ export default function Home() {
     await signOut(auth);
     router.push("/login");
   };
+
+  const isOverdue = (task) => {
+    if (!task.dueDate || task.isComplete) return false;
+    const today = new Date().toISOString().split("T")[0];
+    return task.dueDate < today;
+  };
+
+  const priorityColor = (p) => {
+    if (p === "High") return styles.priorityHigh;
+    if (p === "Low") return styles.priorityLow;
+    return styles.priorityMedium;
+  };
+
+  const filteredTasks = tasks.filter((task) => {
+    if (filter === "pending") return !task.isComplete;
+    if (filter === "completed") return task.isComplete;
+    return true;
+  });
+
+  const completedCount = tasks.filter((t) => t.isComplete).length;
 
   if (loading) return <p>Loading...</p>;
 
@@ -96,22 +121,80 @@ export default function Home() {
             onChange={(e) => setNewTask(e.target.value)}
             className={styles.input}
           />
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className={styles.dateInput}
+          />
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className={styles.select}
+          >
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
           <button type="submit" className={styles.addBtn}>
             Add
           </button>
         </form>
 
+        <div className={styles.summaryBar}>
+          <span className={styles.summaryText}>
+            {completedCount} of {tasks.length} completed
+          </span>
+          <div className={styles.filterGroup}>
+            <button
+              className={filter === "all" ? styles.filterActive : styles.filterBtn}
+              onClick={() => setFilter("all")}
+            >
+              All
+            </button>
+            <button
+              className={filter === "pending" ? styles.filterActive : styles.filterBtn}
+              onClick={() => setFilter("pending")}
+            >
+              Pending
+            </button>
+            <button
+              className={filter === "completed" ? styles.filterActive : styles.filterBtn}
+              onClick={() => setFilter("completed")}
+            >
+              Completed
+            </button>
+          </div>
+        </div>
+
         <ul className={styles.taskList}>
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <li key={task.id} className={styles.taskItem}>
-              <span
-                onClick={() => toggleComplete(task)}
-                className={
-                  task.isComplete ? styles.taskDone : styles.taskText
-                }
-              >
-                {task.title}
-              </span>
+              <div className={styles.taskLeft}>
+                <span
+                  onClick={() => toggleComplete(task)}
+                  className={
+                    task.isComplete ? styles.taskDone : styles.taskText
+                  }
+                >
+                  {task.title}
+                </span>
+                <div className={styles.taskMeta}>
+                  <span className={`${styles.priorityBadge} ${priorityColor(task.priority)}`}>
+                    {task.priority || "Medium"}
+                  </span>
+                  {task.dueDate && (
+                    <span
+                      className={
+                        isOverdue(task) ? styles.overdueDate : styles.dueDateText
+                      }
+                    >
+                      {isOverdue(task) ? "Overdue: " : "Due: "}
+                      {task.dueDate}
+                    </span>
+                  )}
+                </div>
+              </div>
               <button
                 onClick={() => handleDelete(task.id)}
                 className={styles.deleteBtn}
@@ -122,8 +205,8 @@ export default function Home() {
           ))}
         </ul>
 
-        {tasks.length === 0 && (
-          <p className={styles.emptyText}>No tasks yet. Add one above!</p>
+        {filteredTasks.length === 0 && (
+          <p className={styles.emptyText}>No tasks here. Add one above!</p>
         )}
       </div>
     </div>
