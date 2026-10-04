@@ -42,4 +42,4 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 npm run dev
 
 ## Live Demo
-https://todo-app-delta-five-62.vercel.app/
+https://todo-app-farhat.vercel.app/
