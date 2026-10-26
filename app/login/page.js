@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { auth } from "../../lib/firebase";
 import {
   signInWithEmailAndPassword,
@@ -51,6 +52,13 @@ export default function LoginPage() {
             className={styles.input}
             required
           />
+          {!isSignup && (
+            <p style={{ textAlign: "right", fontSize: "14px", margin: "0 0 12px" }}>
+              <Link href="/forgot-password" style={{ color: "#4f46e5", textDecoration: "none" }}>
+                Forgot password?
+              </Link>
+            </p>
+          )}
           {error && <p className={styles.error}>{error}</p>}
           <button type="submit" className={styles.button}>
             {isSignup ? "Sign Up" : "Login"}
